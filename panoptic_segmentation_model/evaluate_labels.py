@@ -12,7 +12,7 @@ import socket
 
 import torch
 from algos import BinaryMaskLoss, CenterLoss, InstanceSegAlgo, OffsetLoss
-from datasets import Cityscapes, Kitti360, PascalVOC, PhenoBench
+from datasets import Cityscapes, Kitti360
 from eval import PanopticEvaluator, SemanticEvaluator
 from io_utils.visualizations import plot_confusion_matrix
 from misc import train_utils
@@ -88,31 +88,31 @@ elif args.dataset_name == "cityscapes":
                               mode_path=mode, is_gt=False)  # val_plabels
     assert len(gt_dataset) == len(pred_dataset)
 
-elif args.dataset_name == "pascal_voc":
-    dataset_cfg.feed_img_size = [512, 512]
-    dataset_cfg.small_instance_area_full_res = 1034
-    dataset_cfg.train_split = "train"
-    dataset_cfg.val_split = "val"
-    dataset_cfg.label_mode = "pascal_voc"
+# elif args.dataset_name == "pascal_voc":
+#     dataset_cfg.feed_img_size = [512, 512]
+#     dataset_cfg.small_instance_area_full_res = 1034
+#     dataset_cfg.train_split = "train"
+#     dataset_cfg.val_split = "val"
+#     dataset_cfg.label_mode = "pascal_voc"
+#
+#     dataset_cfg.path = args.gt_path
+#     gt_dataset = PascalVOC("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
+#     dataset_cfg.path = args.pred_path
+#     pred_dataset = PascalVOC("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
+#     assert len(gt_dataset) == len(pred_dataset)
 
-    dataset_cfg.path = args.gt_path
-    gt_dataset = PascalVOC("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
-    dataset_cfg.path = args.pred_path
-    pred_dataset = PascalVOC("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
-    assert len(gt_dataset) == len(pred_dataset)
-
-elif args.dataset_name == "phenobench":
-    dataset_cfg.feed_img_size = [1024, 1024]
-    dataset_cfg.small_instance_area_full_res = 2048
-    dataset_cfg.train_split = "train"
-    dataset_cfg.val_split = "val"
-    dataset_cfg.label_mode = "phenobench"
-
-    dataset_cfg.path = args.gt_path
-    gt_dataset = PhenoBench("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
-    dataset_cfg.path = args.pred_path
-    pred_dataset = PhenoBench("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
-    assert len(gt_dataset) == len(pred_dataset)
+# elif args.dataset_name == "phenobench":
+#     dataset_cfg.feed_img_size = [1024, 1024]
+#     dataset_cfg.small_instance_area_full_res = 2048
+#     dataset_cfg.train_split = "train"
+#     dataset_cfg.val_split = "val"
+#     dataset_cfg.label_mode = "phenobench"
+#
+#     dataset_cfg.path = args.gt_path
+#     gt_dataset = PhenoBench("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
+#     dataset_cfg.path = args.pred_path
+#     pred_dataset = PhenoBench("val", dataset_cfg, label_mode=dataset_cfg.label_mode)
+#     assert len(gt_dataset) == len(pred_dataset)
 
 else:
     raise NotImplementedError(f"Dataset {args.dataset_name} not implemented")
