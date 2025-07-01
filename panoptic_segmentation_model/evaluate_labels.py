@@ -85,7 +85,7 @@ elif args.dataset_name == "cityscapes":
     gt_dataset = Cityscapes(mode, dataset_cfg, label_mode=dataset_cfg.label_mode, subset=subset_indices)
     dataset_cfg.path = args.pred_path
     pred_dataset = Cityscapes(mode, dataset_cfg, label_mode=dataset_cfg.label_mode,
-                              mode_path=mode, is_gt=True)  # val_plabels
+                              mode_path=mode, is_gt=False)  # val_plabels
     assert len(gt_dataset) == len(pred_dataset)
 
 # elif args.dataset_name == "pascal_voc":
