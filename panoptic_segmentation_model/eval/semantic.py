@@ -60,6 +60,11 @@ class SemanticEvaluator:
             if valid.any():
                 pred = pred[valid].int()
                 target = target[valid].int()
+                print("target min/max:", target.min().item(), target.max().item())
+                print("pred min/max:", pred.min().item(), pred.max().item())
+                print("num_classes:", self.num_classes)
+                print("unique target:", target.unique())
+                print("unique pred:", pred.unique())
                 conf_mat.index_add_(0, target * self.num_classes + pred,
                                     conf_mat.new_ones(target.numel()))
         return conf_mat.view(self.num_classes, self.num_classes)
