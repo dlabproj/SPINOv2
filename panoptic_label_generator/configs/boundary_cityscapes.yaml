@@ -22,7 +22,7 @@ model:
   neighbor_radius: 1.5
   threshold_boundary: 0.93
   num_boundary_neighbors: 1
-  test_output_size: ${data_params.image_size_original}
+  test_output_size: [1024, 2048] #${data_params.image_size_original}
   test_multi_scales: [3, 4, 5]
   test_plot: False
 
@@ -31,8 +31,8 @@ data:
   init_args:
     cfg_dataset:
       name: "cityscapes"
-      path: "" # SET THE PATH TO THE CITYSCAPES DATASET
-      feed_img_size: ${data_params.image_size_original}
+      path: "/work/dlclarge2/guptaay-DL2025_RL1/SPINO/cityscapes"
+      feed_img_size: [1024, 2048] #${data_params.image_size_original}
       offsets: [0]
       remove_classes: []
     num_classes: 19
@@ -43,7 +43,7 @@ data:
       - class_path: utils.transforms.RandomHorizontalFlip
       - class_path: utils.transforms.RandomResizedCrop
         init_args:
-          size: ${data_params.image_size_input}
+          size: [770, 1540] #${data_params.image_size_input}
           scale: [0.4, 1.0]
       - class_path: utils.transforms.ColorJitter
         init_args:
@@ -54,27 +54,27 @@ data:
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
-          mean: ${data_params.image_mean}
-          std: ${data_params.image_std}
+          mean: [0.485, 0.456, 0.406] #${data_params.image_mean}
+          std: [0.229, 0.224, 0.225] #${data_params.image_std}
     transform_test:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: ${data_params.image_size_input}
+          size: [770, 1540] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
-          mean: ${data_params.image_mean}
-          std: ${data_params.image_std}
+          mean: [0.485, 0.456, 0.406] #${data_params.image_mean}
+          std: [0.229, 0.224, 0.225] #${data_params.image_std}
     label_mode: "cityscapes_19"
     train_sample_indices: [12, 324, 450, 608, 742, 768, 798, 836, 1300, 2892]
     test_sample_indices: null
 
-data_params:
-  image_size_original: [1024, 2048]
-  image_size_input: [1008, 2016]
-  image_mean: [0.485, 0.456, 0.406]
-  image_std: [0.229, 0.224, 0.225]
+      #data_params:
+      #image_size_original: [1024, 2048]
+      #image_size_input: [1008, 2016]
+      #image_mean: [0.485, 0.456, 0.406]
+      #image_std: [0.229, 0.224, 0.225]
 
 ckpt_path: null
 
@@ -86,4 +86,4 @@ optimizer:
 lr_scheduler:
   class_path: torch.optim.lr_scheduler.CosineAnnealingLR
   init_args:
-    T_max: ${trainer.max_epochs}
+    T_max: 40 #${trainer.max_epochs}
