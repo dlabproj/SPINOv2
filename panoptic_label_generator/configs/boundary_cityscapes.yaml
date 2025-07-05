@@ -7,8 +7,6 @@ trainer:
   strategy: ddp
   sync_batchnorm: True
   logger: False
-  # Add precision training to reduce memory usage
-  precision: 16
   # Add gradient accumulation to maintain effective batch size
   accumulate_grad_batches: 2
   callbacks:
