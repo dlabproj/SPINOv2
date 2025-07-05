@@ -33,8 +33,10 @@ class FineTuner(pl.LightningModule):
         self.feat_dim = self.encoder.num_features
         self.patch_size = self.encoder.patch_size
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
+        self.frozen = False
         # for param in self.encoder.parameters():  # freeze backbone
         #    param.requires_grad = False
+        #    self.frozen = True
 
         if blocks is None:
             self.num_blocks = 1
@@ -46,30 +48,37 @@ class FineTuner(pl.LightningModule):
         patches_h, patches_w = img_h // self.patch_size, img_w // self.patch_size
 
         return_attention_features = any([(feature_key in x) for x in ['q', 'k', 'v', 'attn']])
-        with torch.no_grad():
+        if self.frozen:
+            with torch.no_grad():
+                block_outputs = self.encoder.forward_features(
+                    img,
+                    return_attention_features=return_attention_features,
+                    return_blocks=self.blocks)
+        else:
             block_outputs = self.encoder.forward_features(
                 img,
                 return_attention_features=return_attention_features,
                 return_blocks=self.blocks)
-            if self.blocks is None:
-                block_outputs = [block_outputs]
-            outs = []
-            for x in block_outputs:
-                x = x[feature_key]
-                if feature_key == 'attn':
-                    return x  # (B, num_heads, Patches+1, Patches+1)
-                if feature_key in ['q', 'k', 'v']:
-                    # (B, Patches+1, num_heads, feat_dim // num_heads)
-                    x = x.permute((0, 2, 1, 3)).contiguous()
-                    x = x.reshape((x.shape[0], -1, self.feat_dim))  # (B, Patches+1, feat_dim)
-                outs.append(x)
-            x = torch.cat(outs, dim=2)  # (B, Patches+1, feat_dim * self.num_blocks)
 
-            x = x[:, 1:, :]  # (B, Patches, feat_dim)
-            x = x.permute((0, 2, 1)).contiguous()  # (B, feat_dim, H*W)
-            x = x.reshape((x.shape[0], self.feat_dim * self.num_blocks, patches_h,
-                           patches_w))  # (B, feat_dim, H, W)
-            if self.upsample_factor is not None:
-                x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
-                                              align_corners=False)  # (B, feat_dim, H, W)
+        if self.blocks is None:
+            block_outputs = [block_outputs]
+        outs = []
+        for x in block_outputs:
+            x = x[feature_key]
+            if feature_key == 'attn':
+                return x  # (B, num_heads, Patches+1, Patches+1)
+            if feature_key in ['q', 'k', 'v']:
+                # (B, Patches+1, num_heads, feat_dim // num_heads)
+                x = x.permute((0, 2, 1, 3)).contiguous()
+                x = x.reshape((x.shape[0], -1, self.feat_dim))  # (B, Patches+1, feat_dim)
+            outs.append(x)
+        x = torch.cat(outs, dim=2)  # (B, Patches+1, feat_dim * self.num_blocks)
+
+        x = x[:, 1:, :]  # (B, Patches, feat_dim)
+        x = x.permute((0, 2, 1)).contiguous()  # (B, feat_dim, H*W)
+        x = x.reshape((x.shape[0], self.feat_dim * self.num_blocks, patches_h,
+                       patches_w))  # (B, feat_dim, H, W)
+        if self.upsample_factor is not None:
+            x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
+                                          align_corners=False)  # (B, feat_dim, H, W)
         return x
