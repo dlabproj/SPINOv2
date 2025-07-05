@@ -4,13 +4,13 @@ seed_everything: 0
 trainer:
   max_epochs: 40
   accelerator: gpu
-  strategy: ddp_find_unused_parameters_false
+  strategy: ddp
   sync_batchnorm: True
   logger: False
   # Add precision training to reduce memory usage
   precision: 16
   # Add gradient accumulation to maintain effective batch size
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 2
   callbacks:
     - class_path: pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint
       init_args:
