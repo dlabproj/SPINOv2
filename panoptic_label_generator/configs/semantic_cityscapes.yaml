@@ -23,7 +23,7 @@ model:
   num_classes: 19 #${data.init_args.num_classes}
   train_output_size: [770, 1540] #${data_params.image_size_input}
   upsample_factor: 14.0
-  head: "mlp"
+  head: "linear"
   ignore_index: 255
   top_k_percent_pixels: 0.2
   test_output_size: [1024, 2048] #${data_params.image_size_original}

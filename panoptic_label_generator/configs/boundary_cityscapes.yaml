@@ -18,7 +18,7 @@ model:
   dinov2_vit_model: "vitb14"
   mode: "direct"
   upsample_factor: 4.0
-  head: "mlp"
+  head: "linear"
   neighbor_radius: 1.5
   threshold_boundary: 0.93
   num_boundary_neighbors: 1
