@@ -33,8 +33,8 @@ class FineTuner(pl.LightningModule):
         self.feat_dim = self.encoder.num_features
         self.patch_size = self.encoder.patch_size
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
-        for param in self.encoder.parameters():  # freeze backbone
-            param.requires_grad = False
+        # for param in self.encoder.parameters():  # freeze backbone
+        #    param.requires_grad = False
 
         if blocks is None:
             self.num_blocks = 1
