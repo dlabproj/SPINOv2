@@ -19,7 +19,7 @@ trainer:
         every_n_epochs: 10
 
 model:
-  dinov2_vit_model: "vits14"
+  dinov2_vit_model: "vitl14"
   num_classes: 19 #${data.init_args.num_classes}
   train_output_size: [770, 1540] #${data_params.image_size_input}
   upsample_factor: 14.0
