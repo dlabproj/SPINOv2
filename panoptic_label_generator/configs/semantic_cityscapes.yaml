@@ -10,7 +10,7 @@ trainer:
   # Add precision training to reduce memory usage
   precision: 16
   # Add gradient accumulation to maintain effective batch size
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 2
   callbacks:
     - class_path: pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint
       init_args:
@@ -26,7 +26,7 @@ model:
   head: "mlp"
   ignore_index: 255
   top_k_percent_pixels: 0.2
-  test_output_size: [1024, 2048] #${data_params.image_size_original}
+  test_output_size: [512, 1024] #${data_params.image_size_original}
   test_multi_scales: [1, 2, 3]
   test_plot: False
 
@@ -36,7 +36,7 @@ data:
     cfg_dataset:
       name: "cityscapes"
       path: "/work/dlclarge2/guptaay-DL2025_RL1/SPINO/cityscapes"
-      feed_img_size: [1024, 2048] #${data_params.image_size_original}
+      feed_img_size: [512, 1024] #${data_params.image_size_original}
       offsets: [0]
       remove_classes: []
     num_classes: 19
@@ -47,7 +47,7 @@ data:
       - class_path: utils.transforms.RandomHorizontalFlip
       - class_path: utils.transforms.RandomResizedCrop
         init_args:
-          size: [770, 1540] #${data_params.image_size_input}
+          size: [384, 768] #${data_params.image_size_input}
           scale: [0.2, 1.0]
       - class_path: utils.transforms.ColorJitter
         init_args:
@@ -64,7 +64,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [770, 1540] #${data_params.image_size_input}
+          size: [384, 768] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
