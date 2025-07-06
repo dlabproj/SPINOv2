@@ -12,12 +12,12 @@ model:
     init_args:
       dinov2_vit_model: "vits14"
       num_classes: ${data.init_args.num_classes}
-      train_output_size: [504, 1008] #${data_params.image_size_input}
+      train_output_size: [384, 768] #${data_params.image_size_input}
       upsample_factor: 14.0
       head: "linear"
       ignore_index: 255
       top_k_percent_pixels: 0.2
-      test_output_size: [1024, 2048] #${data_params.image_size_original}
+      test_output_size: [512, 1024] #${data_params.image_size_original}
       test_multi_scales: [ 1, 2, 3 ]
       test_plot: False
       test_save_dir: null
@@ -32,7 +32,7 @@ model:
       neighbor_radius: 1.5
       threshold_boundary: 0.93
       num_boundary_neighbors: 1
-      test_output_size: [1024, 2048] #${data_params.image_size_original}
+      test_output_size: [512, 1024] #${data_params.image_size_original}
       test_multi_scales: [3, 4, 5]
       test_plot: False
   boundary_model_ckpt: "checkpoints/boundary_cityscapes.ckpt"
@@ -40,7 +40,7 @@ model:
   instance_min_pixel: 500
   erosion_structure: [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
   erosion_iterations: 0
-  output_size: [1024, 2048] #${data_params.image_size_original}
+  output_size: [512, 1024] #${data_params.image_size_original}
   test_plot: False
   test_save_dir: "results/cityscapes"
   test_save_vis: True
@@ -51,7 +51,7 @@ data:
     cfg_dataset:
       name: "cityscapes"
       path: "/work/dlclarge2/guptaay-DL2025_RL1/SPINO/cityscapes"
-      feed_img_size: [1024, 2048] #${data_params.image_size_original}
+      feed_img_size: [512, 1024] #${data_params.image_size_original}
       offsets: [0]
       remove_classes: []
     num_classes: 19
@@ -62,7 +62,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [504, 1008] #${data_params.image_size_input}
+          size: [384, 768] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
