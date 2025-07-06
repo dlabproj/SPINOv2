@@ -12,7 +12,7 @@ model:
     init_args:
       dinov2_vit_model: "vits14"
       num_classes: ${data.init_args.num_classes}
-      train_output_size: [384, 768] #${data_params.image_size_input}
+      train_output_size: [378, 756] #${data_params.image_size_input}
       upsample_factor: 14.0
       head: "linear"
       ignore_index: 255
@@ -62,7 +62,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [384, 768] #${data_params.image_size_input}
+          size: [378, 756] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
