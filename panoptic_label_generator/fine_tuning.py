@@ -51,17 +51,10 @@ class FineTuner(pl.LightningModule):
         patches_h, patches_w = img_h // self.patch_size, img_w // self.patch_size
 
         return_attention_features = any([(feature_key in x) for x in ['q', 'k', 'v', 'attn']])
-        if self.frozen:
-            with torch.no_grad():
-                block_outputs = self.encoder.forward_features(
-                    img,
-                    return_attention_features=return_attention_features,
-                    return_blocks=self.blocks)
-        else:
-            block_outputs = self.encoder.forward_features(
-                img,
-                return_attention_features=return_attention_features,
-                return_blocks=self.blocks)
+        block_outputs = self.encoder.forward_features(
+            img,
+            return_attention_features=return_attention_features,
+            return_blocks=self.blocks)
 
         if self.blocks is None:
             block_outputs = [block_outputs]
