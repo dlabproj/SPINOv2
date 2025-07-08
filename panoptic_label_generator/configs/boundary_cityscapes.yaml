@@ -4,11 +4,11 @@ seed_everything: 0
 trainer:
   max_epochs: 40
   accelerator: gpu
-  strategy: ddp_find_unused_parameters_false
+  strategy: ddp_find_unused_parameters_true
   sync_batchnorm: True
   logger: False
   # Add gradient accumulation to maintain effective batch size
-  accumulate_grad_batches: 2
+  # accumulate_grad_batches: 2
   callbacks:
     - class_path: pytorch_lightning.callbacks.model_checkpoint.ModelCheckpoint
       init_args:
@@ -17,14 +17,14 @@ trainer:
         every_n_epochs: 10
 
 model:
-  dinov2_vit_model: "vits14"
+  dinov2_vit_model: "vitb14"
   mode: "direct"
   upsample_factor: 4.0
   head: "linear"
   neighbor_radius: 1.5
   threshold_boundary: 0.93
   num_boundary_neighbors: 1
-  test_output_size: [512, 1024] #${data_params.image_size_original}
+  test_output_size: [1024, 2048] #${data_params.image_size_original}
   test_multi_scales: [3, 4, 5]
   test_plot: False
 
@@ -34,7 +34,7 @@ data:
     cfg_dataset:
       name: "cityscapes"
       path: "/work/dlclarge2/guptaay-DL2025_RL1/SPINO/cityscapes"
-      feed_img_size: [512, 1024] #${data_params.image_size_original}
+      feed_img_size: [1024, 2048] #${data_params.image_size_original}
       offsets: [0]
       remove_classes: []
     num_classes: 19
@@ -45,7 +45,7 @@ data:
       - class_path: utils.transforms.RandomHorizontalFlip
       - class_path: utils.transforms.RandomResizedCrop
         init_args:
-          size: [378, 756] #${data_params.image_size_input}
+          size: [770, 1540] #${data_params.image_size_input}
           scale: [0.4, 1.0]
       - class_path: utils.transforms.ColorJitter
         init_args:
@@ -62,7 +62,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [378, 756] #${data_params.image_size_input}
+          size: [770, 1540] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
