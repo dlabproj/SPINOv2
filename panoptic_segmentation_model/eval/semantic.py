@@ -60,10 +60,6 @@ class SemanticEvaluator:
             if valid.any():
                 pred = pred[valid].int()
                 target = target[valid].int()
-                in_bounds = (pred >= 0) & (pred < self.num_classes) & (target >= 0) & (target < self.num_classes)
-                if in_bounds.any():
-                    pred = pred[in_bounds]
-                    target = target[in_bounds]
-                    conf_mat.index_add_(0, target * self.num_classes + pred,
-                                        conf_mat.new_ones(target.numel()))
+                conf_mat.index_add_(0, target * self.num_classes + pred,
+                                    conf_mat.new_ones(target.numel()))
         return conf_mat.view(self.num_classes, self.num_classes)
