@@ -134,3 +134,4 @@ dmypy.json
 
 # IDEs
 .idea
+/panoptic_label_generator/results
