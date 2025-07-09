@@ -134,3 +134,8 @@ dmypy.json
 
 # IDEs
 .idea
+
+
+/cityscapes_pseudolabels
+/panoptic_label_generator/checkpoints
+/panoptic_label_generator/logs

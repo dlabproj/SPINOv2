@@ -152,6 +152,12 @@ class SemanticFineTuner(FineTuner):
         self.log('train_loss', loss)
         return loss
 
+#    def on_after_backward(self):
+#        print("Checking LoRA gradients...")
+#        for name, param in self.named_parameters():
+#            if "lora" in name.lower() and param.grad is not None:
+#                print(f"{name}: grad norm = {param.grad.norm().item()}")
+
     def predict(self, rgb: torch.Tensor, mask: Optional[torch.Tensor] = None) -> torch.Tensor:
         if self.test_multi_scales is None:
             pred = self(rgb)  # (B, num_classes, H, W)
