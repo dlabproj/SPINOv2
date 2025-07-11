@@ -1,0 +1,5 @@
+# Ignore all .ckpt files
+*.ckpt
+
+# Optionally ignore full checkpoints folder
+panoptic_label_generator/checkpoints/
