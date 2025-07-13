@@ -13,8 +13,8 @@ from torch import nn
 
 
 class FineTuner(pl.LightningModule):
-    def __init__(self, dinov2_vit_model: str, blocks: Optional[List[int]] = None,
-                 upsample_factor: Optional[float] = None, lora_enabled = True):
+    def __init__(self, dinov2_vit_model: str, use_lora, blocks: Optional[List[int]] = None,
+                 upsample_factor: Optional[float] = None):
         super().__init__()
         self.dinov2_vit_model = dinov2_vit_model
         self.blocks = blocks
@@ -35,7 +35,7 @@ class FineTuner(pl.LightningModule):
         self.patch_size = self.encoder.patch_size
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
 
-        if lora_enabled:
+        if use_lora:
             self.lora_layers = nn.ModuleDict()
             apply_lora(self.encoder, self.lora_layers)
             #sets requires_grad to False for all parameters without the string "lora_" in their names

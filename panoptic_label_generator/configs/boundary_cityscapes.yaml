@@ -2,7 +2,7 @@
 seed_everything: 0
 
 trainer:
-  max_epochs: 30
+  max_epochs: 40
   accelerator: gpu
   strategy: ddp_find_unused_parameters_false
   sync_batchnorm: True
@@ -25,6 +25,7 @@ model:
   test_output_size: [1024, 2048] #${data_params.image_size_original}
   test_multi_scales: [3, 4, 5]
   test_plot: False
+  use_lora: True
 
 data:
   class_path: datasets.cityscapes.CityscapesDataModule
@@ -43,7 +44,7 @@ data:
       - class_path: utils.transforms.RandomHorizontalFlip
       - class_path: utils.transforms.RandomResizedCrop
         init_args:
-          size: [1008, 2016] #${data_params.image_size_input}
+          size: [504, 1008] #${data_params.image_size_input}
           scale: [0.4, 1.0]
       - class_path: utils.transforms.ColorJitter
         init_args:
@@ -60,7 +61,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [1008, 2016] #${data_params.image_size_input}
+          size: [504, 1008] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
@@ -86,4 +87,4 @@ optimizer:
 lr_scheduler:
   class_path: torch.optim.lr_scheduler.CosineAnnealingLR
   init_args:
-    T_max: 30 #${trainer.max_epochs}
+    T_max: 40 #${trainer.max_epochs}

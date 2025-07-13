@@ -55,9 +55,9 @@ class BoundaryFineTuner(FineTuner):
                  num_boundary_neighbors: int = 1,
                  test_output_size: Optional[Tuple[int, int]] = None,
                  test_multi_scales: Optional[List[int]] = None,
-                 test_plot: bool = False):
+                 test_plot: bool = False, use_lora = False):
         super().__init__(dinov2_vit_model=dinov2_vit_model, blocks=None,
-                         upsample_factor=upsample_factor)
+                         upsample_factor=upsample_factor, use_lora=use_lora)
         assert mode in ['affinity', 'direct']
         self.mode = mode
         self.neighbor_radius = neighbor_radius
