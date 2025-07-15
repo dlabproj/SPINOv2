@@ -14,7 +14,7 @@ model:
       num_classes: 19 #${data.init_args.num_classes}
       train_output_size: [504, 1008] #${data_params.image_size_input}
       upsample_factor: 14.0
-      head: "mlp"
+      head: "linear"
       ignore_index: 255
       top_k_percent_pixels: 0.2
       test_output_size: [1024, 2048] #${data_params.image_size_original}
@@ -28,7 +28,7 @@ model:
       dinov2_vit_model: "vitb14"
       mode: "direct"
       upsample_factor: 4.0
-      head: "mlp"
+      head: "linear"
       neighbor_radius: 1.5
       threshold_boundary: 0.93
       num_boundary_neighbors: 1
