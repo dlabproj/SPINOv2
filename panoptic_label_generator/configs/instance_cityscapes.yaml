@@ -21,7 +21,6 @@ model:
       test_multi_scales: [ 1, 2, 3 ]
       test_plot: False
       test_save_dir: null
-      use_lora: True
   semantic_model_ckpt: "checkpoints/semantic_cityscapes.ckpt"
   boundary_model:
     class_path: boundary_fine_tuning.BoundaryFineTuner
@@ -36,7 +35,6 @@ model:
       test_output_size: [1024, 2048] #${data_params.image_size_original}
       test_multi_scales: [3, 4, 5]
       test_plot: False
-      use_lora: True
   boundary_model_ckpt: "checkpoints/boundary_cityscapes.ckpt"
   structure_connectivity: [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
   instance_min_pixel: 500

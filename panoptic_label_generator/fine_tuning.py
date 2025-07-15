@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import loralib as lora
 import pytorch_lightning as pl
 import torch
 from models.dino_v2 import (
@@ -13,7 +12,7 @@ from torch import nn
 
 
 class FineTuner(pl.LightningModule):
-    def __init__(self, dinov2_vit_model: str, use_lora, blocks: Optional[List[int]] = None,
+    def __init__(self, dinov2_vit_model: str, blocks: Optional[List[int]] = None,
                  upsample_factor: Optional[float] = None):
         super().__init__()
         self.dinov2_vit_model = dinov2_vit_model
@@ -35,16 +34,8 @@ class FineTuner(pl.LightningModule):
         self.patch_size = self.encoder.patch_size
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
 
-        if use_lora:
-            self.lora_layers = nn.ModuleDict()
-            apply_lora(self.encoder, self.lora_layers)
-            #sets requires_grad to False for all parameters without the string "lora_" in their names
-            lora.mark_only_lora_as_trainable(self.encoder)
-            assert any('lora' in name.lower() for name, _ in self.named_parameters()), 'LoRA layers not found!'
-            print('LoRA enabled')
-        else:
-            for param in self.encoder.parameters():  # freeze backbone
-                param.requires_grad = False
+        for param in self.encoder.parameters():  # unfreeze backbone
+            param.requires_grad = True
 
         if blocks is None:
             self.num_blocks = 1
@@ -91,30 +82,3 @@ class FineTuner(pl.LightningModule):
             x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
                                             align_corners=False)  # (B, feat_dim, H, W)
         return x
-
-
-def apply_lora(model, lora_store: nn.ModuleDict, rank=4, alpha=16, skip_blocks=[0, 1, 2]):
-    for name, module in model.named_modules():
-        if any(f'blocks.{i}.' in name for i in skip_blocks):
-            continue  # skip LoRA for early blocks
-        if name.endswith('attn.qkv') and isinstance(module, nn.Linear):
-            # name = "blocks.3.attn.qkv"
-            parent_name = '.'.join(name.split('.')[:-1]) # parent_name = "blocks.3.attn"
-            parent = dict(model.named_modules())[parent_name]
-
-            lora_module = lora.Linear(
-                in_features=module.in_features,
-                out_features=module.out_features,
-                r=rank,
-                lora_alpha=alpha,
-                fan_in_fan_out=False,
-                bias=module.bias is not None
-            )
-
-            lora_module.weight.data = module.weight.data.clone()
-            if module.bias is not None:
-                lora_module.bias.data = module.bias.data.clone()
-
-            unique_name = name.replace('.', '_')
-            lora_store[unique_name] = lora_module
-            setattr(parent, name.split('.')[-1], lora_store[unique_name])

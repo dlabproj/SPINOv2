@@ -25,7 +25,6 @@ model:
   test_output_size: [1024, 2048] #${data_params.image_size_original}
   test_multi_scales: [3, 4, 5]
   test_plot: False
-  use_lora: True
 
 data:
   class_path: datasets.cityscapes.CityscapesDataModule
