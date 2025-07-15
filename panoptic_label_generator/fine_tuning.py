@@ -95,7 +95,7 @@ class FineTuner(pl.LightningModule):
 
 def apply_lora(model, lora_store: nn.ModuleDict, rank=4, alpha=16, skip_blocks=[0, 1, 2]):
     for name, module in model.named_modules():
-        if any(f"blocks.{i}." in name for i in skip_blocks):
+        if any(f'blocks.{i}.' in name for i in skip_blocks):
             continue  # skip LoRA for early blocks
         if name.endswith('attn.qkv') and isinstance(module, nn.Linear):
             # name = "blocks.3.attn.qkv"
@@ -117,4 +117,4 @@ def apply_lora(model, lora_store: nn.ModuleDict, rank=4, alpha=16, skip_blocks=[
 
             unique_name = name.replace('.', '_')
             lora_store[unique_name] = lora_module
-            setattr(parent, name.split(".")[-1], lora_store[unique_name])
+            setattr(parent, name.split('.')[-1], lora_store[unique_name])
