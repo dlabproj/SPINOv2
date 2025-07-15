@@ -93,14 +93,16 @@ class FineTuner(pl.LightningModule):
         return x
 
 
-def apply_lora(model, lora_store: nn.ModuleDict, rank=4, alpha=32):
+def apply_lora(model, lora_store: nn.ModuleDict, rank=4, alpha=16, skip_blocks=[0, 1, 2]):
     for name, module in model.named_modules():
+        if any(f"blocks.{i}." in name for i in skip_blocks):
+            continue  # skip LoRA for early blocks
         if name.endswith('attn.qkv') and isinstance(module, nn.Linear):
             # name = "blocks.3.attn.qkv"
             parent_name = '.'.join(name.split('.')[:-1]) # parent_name = "blocks.3.attn"
             parent = dict(model.named_modules())[parent_name]
 
-            lora_qkv = lora.Linear(
+            lora_module = lora.Linear(
                 in_features=module.in_features,
                 out_features=module.out_features,
                 r=rank,
@@ -109,10 +111,10 @@ def apply_lora(model, lora_store: nn.ModuleDict, rank=4, alpha=32):
                 bias=module.bias is not None
             )
 
-            lora_qkv.weight.data = module.weight.data.clone()
+            lora_module.weight.data = module.weight.data.clone()
             if module.bias is not None:
-                lora_qkv.bias.data = module.bias.data.clone()
+                lora_module.bias.data = module.bias.data.clone()
 
             unique_name = name.replace('.', '_')
-            lora_store[unique_name] = lora_qkv
-            setattr(parent, 'qkv', lora_store[unique_name])
+            lora_store[unique_name] = lora_module
+            setattr(parent, name.split(".")[-1], lora_store[unique_name])

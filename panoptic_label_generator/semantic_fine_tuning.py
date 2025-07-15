@@ -117,14 +117,6 @@ class SemanticFineTuner(FineTuner):
                 .permute(0, 3, 1, 2)  # (B, num_classes, H, W)
         else:
             x = self.head(x)  # (B, num_classes, H, W)
-            with torch.no_grad():
-                probs = F.softmax(x, dim=1)  # (B, num_classes, H, W)
-                preds = probs.argmax(dim=1)  # (B, H, W)
-
-                print("Logit stats:")
-                print("  Logits mean per class:", x.mean(dim=(0, 2, 3)).cpu().numpy())
-                print("  Logits max per class:", x.max(dim=3)[0].max(dim=2)[0].mean(dim=0).cpu().numpy())
-                print("  Unique predicted classes:", torch.unique(preds))
         x = nn.functional.interpolate(x, size=self.train_output_size, mode='bilinear',
                                       align_corners=False)
         return x
