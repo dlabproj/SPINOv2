@@ -25,8 +25,10 @@ class BoundaryFineTuner(FineTuner):
 
     Parameters
     ----------
-    dinov2_vit_model : str
+    vit_model : str
         ViT model name of DINOv2. One of ['vits14', 'vitl14', 'vitg14', 'vitb14'].
+    backbone: str
+        Name of the pretrained backbone. One of ['dino', 'eva02', 'segany']
     mode : str
         One of ['affinity', 'direct']. If 'affinity', predict affinity. If 'direct', predict
         boundary directly.
@@ -49,14 +51,14 @@ class BoundaryFineTuner(FineTuner):
         Whether to plot the predictions during testing.
     """
 
-    def __init__(self, dinov2_vit_model: str, mode: str = 'direct',
+    def __init__(self, vit_model: str, backbone: str, mode: str = 'direct',
                  upsample_factor: Optional[float] = None, head: str = 'mlp',
                  neighbor_radius: float = 1.5, threshold_boundary: float = 0.95,
                  num_boundary_neighbors: int = 1,
                  test_output_size: Optional[Tuple[int, int]] = None,
                  test_multi_scales: Optional[List[int]] = None,
                  test_plot: bool = False):
-        super().__init__(dinov2_vit_model=dinov2_vit_model, blocks=None,
+        super().__init__(vit_model=vit_model, backbone=backbone, blocks=None,
                          upsample_factor=upsample_factor)
         assert mode in ['affinity', 'direct']
         self.mode = mode

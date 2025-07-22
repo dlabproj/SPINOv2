@@ -12,30 +12,33 @@ from torch import nn
 
 
 class FineTuner(pl.LightningModule):
-    def __init__(self, dinov2_vit_model: str, blocks: Optional[List[int]] = None,
+    def __init__(self, vit_model: str, backbone: str, blocks: Optional[List[int]] = None,
                  upsample_factor: Optional[float] = None):
         super().__init__()
-        self.dinov2_vit_model = dinov2_vit_model
+        self.backbone = backbone
+        self.vit_model = vit_model
         self.blocks = blocks
         self.upsample_factor = upsample_factor
 
-        if dinov2_vit_model == 'vits14':
-            self.encoder = dinov2_vits14(pretrained=True)
-        elif dinov2_vit_model == 'vitb14':
-            self.encoder = dinov2_vitb14(pretrained=True)
-        elif dinov2_vit_model == 'vitl14':
-            self.encoder = dinov2_vitl14(pretrained=True)
-        elif dinov2_vit_model == 'vitg14':
-            self.encoder = dinov2_vitg14(pretrained=True)
-        else:
-            raise ValueError(f'Unknown model {dinov2_vit_model}')
+        if backbone == 'dino':
+            if vit_model == 'vits14':
+                self.encoder = dinov2_vits14(pretrained=True)
+            elif vit_model == 'vitb14':
+                self.encoder = dinov2_vitb14(pretrained=True)
+            elif vit_model == 'vitl14':
+                self.encoder = dinov2_vitl14(pretrained=True)
+            elif vit_model == 'vitg14':
+                self.encoder = dinov2_vitg14(pretrained=True)
+            else:
+                raise ValueError(f'Unknown vit model {vit_model}')
+
 
         self.feat_dim = self.encoder.num_features
         self.patch_size = self.encoder.patch_size
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
 
         for param in self.encoder.parameters():  # unfreeze backbone
-            param.requires_grad = True
+            param.requires_grad = False
 
         if blocks is None:
             self.num_blocks = 1

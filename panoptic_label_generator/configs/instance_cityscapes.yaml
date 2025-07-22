@@ -10,7 +10,8 @@ model:
   semantic_model:
     class_path: semantic_fine_tuning.SemanticFineTuner
     init_args:
-      dinov2_vit_model: "vitb14"
+      vit_model: "vitb14"
+      backbone: "dino"
       num_classes: 19 #${data.init_args.num_classes}
       train_output_size: [504, 1008] #${data_params.image_size_input}
       upsample_factor: 14.0
@@ -25,7 +26,8 @@ model:
   boundary_model:
     class_path: boundary_fine_tuning.BoundaryFineTuner
     init_args:
-      dinov2_vit_model: "vitb14"
+      vit_model: "vitb14"
+      backbone: "dino"
       mode: "direct"
       upsample_factor: 4.0
       head: "linear"

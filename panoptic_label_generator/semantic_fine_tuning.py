@@ -28,8 +28,10 @@ class SemanticFineTuner(FineTuner):
 
     Parameters
     ----------
-    dinov2_vit_model : str
+    vit_model : str
         ViT model name of DINOv2. One of ['vits14', 'vitl14', 'vitg14', 'vitb14'].
+    backbone: str
+        Name of the pretrained backbone. One of ['dino', 'eva02', 'segany']
     num_classes : int
         Number of classes for semantic segmentation.
     train_output_size : Tuple[int, int]
@@ -54,14 +56,14 @@ class SemanticFineTuner(FineTuner):
         Directory to save the predictions during testing.
     """
 
-    def __init__(self, dinov2_vit_model: str, num_classes: int, train_output_size: Tuple[int, int],
+    def __init__(self, vit_model: str, backbone: str, num_classes: int, train_output_size: Tuple[int, int],
                  blocks: Optional[List[int]] = None, upsample_factor: Optional[float] = None,
                  head: str = 'mlp',
                  ignore_index: int = -100, top_k_percent_pixels: float = 1.0,
                  test_output_size: Optional[Tuple[int, int]] = None,
                  test_multi_scales: Optional[List[int]] = None,
                  test_plot: bool = False, test_save_dir: Optional[str] = None):
-        super().__init__(dinov2_vit_model=dinov2_vit_model, blocks=blocks,
+        super().__init__(vit_model=vit_model, backbone=backbone, blocks=blocks,
                          upsample_factor=upsample_factor)
         self.num_classes = num_classes
         self.train_output_size = train_output_size

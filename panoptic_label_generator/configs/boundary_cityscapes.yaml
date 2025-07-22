@@ -15,7 +15,8 @@ trainer:
         every_n_epochs: 10
 
 model:
-  dinov2_vit_model: "vitb14"
+  vit_model: "vitb14"
+  backbone: "dino"
   mode: "direct"
   upsample_factor: 4.0
   head: "linear"
