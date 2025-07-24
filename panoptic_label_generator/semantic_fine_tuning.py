@@ -31,7 +31,7 @@ class SemanticFineTuner(FineTuner):
     vit_model : str
         ViT model name of DINOv2. One of ['vits14', 'vitl14', 'vitg14', 'vitb14'].
     backbone: str
-        Name of the pretrained backbone. One of ['dino', 'eva02', 'segany']
+        Name of the pretrained backbone. One of ['dino', 'eva02', 'sam']
     num_classes : int
         Number of classes for semantic segmentation.
     train_output_size : Tuple[int, int]
@@ -181,6 +181,7 @@ class SemanticFineTuner(FineTuner):
         all_preds = []  # List to store predictions at all scales to fuse later
         batch_size = rgb.shape[0]
         img_h, img_w = rgb.shape[2:]
+        print(batch_size, img_h, img_w)
 
         for scale in self.test_multi_scales:
             image_h_split, image_w_split = img_h // scale, img_w // scale
@@ -200,9 +201,9 @@ class SemanticFineTuner(FineTuner):
                         rgb_split_i, [img_h, img_w],
                         interpolation=InterpolationMode.BILINEAR)
                     pred = self(rgb_split_i_upscaled)  # (B, num_classes, H, W)
-                    pred = T.functional.resize(
-                        pred, [train_output_h_split, train_output_w_split],
-                        interpolation=InterpolationMode.BILINEAR)  # (B, num_classes, H, W)
+                    pred = nn.functional.interpolate(
+                        pred, size=(train_output_h_split, train_output_w_split),
+                        mode='bilinear', align_corners=False) # (B, num_classes, H, W)
                     pred_scale[:, :, row * train_output_h_split:(row + 1) * train_output_h_split,
                     col * train_output_w_split:(col + 1) * train_output_w_split] \
                         = pred  # (B, num_classes, H, W)

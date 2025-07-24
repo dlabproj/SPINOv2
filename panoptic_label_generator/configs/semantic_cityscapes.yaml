@@ -15,12 +15,12 @@ trainer:
         every_n_epochs: 10
 
 model:
-  vit_model: "vitb14"
-  backbone: "dino"
+  vit_model: "vitb16"
+  backbone: "sam"
   num_classes: 19 #${data.init_args.num_classes}
-  train_output_size: [504, 1008] #${data_params.image_size_input}
-  upsample_factor: 14.0
-  head: "linear"
+  train_output_size: [672, 1344] #${data_params.image_size_input}
+  upsample_factor: 16.0
+  head: "mlp"
   ignore_index: 255
   top_k_percent_pixels: 0.2
   test_output_size: [1024, 2048] #${data_params.image_size_original}
@@ -44,7 +44,7 @@ data:
       - class_path: utils.transforms.RandomHorizontalFlip
       - class_path: utils.transforms.RandomResizedCrop
         init_args:
-          size: [504, 1008] #${data_params.image_size_input}
+          size: [672, 1344] #${data_params.image_size_input}
           scale: [0.2, 1.0]
       - class_path: utils.transforms.ColorJitter
         init_args:
@@ -61,7 +61,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [504, 1008] #${data_params.image_size_input}
+          size: [672, 1344] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:

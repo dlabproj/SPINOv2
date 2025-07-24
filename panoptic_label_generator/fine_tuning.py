@@ -2,12 +2,14 @@ from typing import List, Optional
 
 import pytorch_lightning as pl
 import torch
+import torch.nn.functional as F
 from models.dino_v2 import (
     dinov2_vitb14,
     dinov2_vitg14,
     dinov2_vitl14,
     dinov2_vits14,
 )
+from models.segment_anything import sam_vit_b, sam_vit_h, sam_vit_l
 from torch import nn
 
 
@@ -20,7 +22,7 @@ class FineTuner(pl.LightningModule):
         self.blocks = blocks
         self.upsample_factor = upsample_factor
 
-        if backbone == 'dino':
+        if self.backbone == 'dino':
             if vit_model == 'vits14':
                 self.encoder = dinov2_vits14(pretrained=True)
             elif vit_model == 'vitb14':
@@ -31,13 +33,26 @@ class FineTuner(pl.LightningModule):
                 self.encoder = dinov2_vitg14(pretrained=True)
             else:
                 raise ValueError(f'Unknown vit model {vit_model}')
+            self.feat_dim = self.encoder.num_features
+            self.patch_size = self.encoder.patch_size
+        elif self.backbone == "sam":
+            if vit_model == 'vitb16':
+                self.encoder = sam_vit_b(pretrained=True)
+            elif vit_model == 'vitl16':
+                self.encoder = sam_vit_l(pretrained=True)
+            elif vit_model == 'vith16':
+                self.encoder = sam_vit_h(pretrained=True)
+            else:
+                raise ValueError(f'Unknown vit model {vit_model}')
+            self.feat_dim = self.encoder.patch_embed.proj.out_channels  # 768
+            self.patch_size = self.encoder.patch_embed.proj.kernel_size[0]  # 16
+        # print(f"[DEBUG] Using encoder: {type(self.encoder)}")
+        # print(f"[DEBUG] Encoder has {sum(p.numel() for p in self.encoder.parameters()) / 1e6:.2f}M parameters")
 
 
-        self.feat_dim = self.encoder.num_features
-        self.patch_size = self.encoder.patch_size
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
 
-        for param in self.encoder.parameters():  # unfreeze backbone
+        for param in self.encoder.parameters():  # freeze backbone
             param.requires_grad = False
 
         if blocks is None:
@@ -49,39 +64,51 @@ class FineTuner(pl.LightningModule):
         img_h, img_w = img.shape[2:]
         patches_h, patches_w = img_h // self.patch_size, img_w // self.patch_size
 
-        return_attention_features = any([(feature_key in x) for x in ['q', 'k', 'v', 'attn']])
+        if self.backbone == 'dino':
+            return_attention_features = any([(feature_key in x) for x in ['q', 'k', 'v', 'attn']])
 
-        if any(param.requires_grad for param in self.encoder.parameters()):
-            block_outputs = self.encoder.forward_features(
-                img,
-                return_attention_features=return_attention_features,
-                return_blocks=self.blocks)
-        else:
-            with torch.no_grad():
+            if any(param.requires_grad for param in self.encoder.parameters()):
                 block_outputs = self.encoder.forward_features(
                     img,
                     return_attention_features=return_attention_features,
                     return_blocks=self.blocks)
+            else:
+                with torch.no_grad():
+                    block_outputs = self.encoder.forward_features(
+                        img,
+                        return_attention_features=return_attention_features,
+                        return_blocks=self.blocks)
 
-        if self.blocks is None:
-            block_outputs = [block_outputs]
-        outs = []
-        for x in block_outputs:
-            x = x[feature_key]
-            if feature_key == 'attn':
-                return x  # (B, num_heads, Patches+1, Patches+1)
-            if feature_key in ['q', 'k', 'v']:
-                # (B, Patches+1, num_heads, feat_dim // num_heads)
-                x = x.permute((0, 2, 1, 3)).contiguous()
-                x = x.reshape((x.shape[0], -1, self.feat_dim))  # (B, Patches+1, feat_dim)
-            outs.append(x)
-        x = torch.cat(outs, dim=2)  # (B, Patches+1, feat_dim * self.num_blocks)
+            if self.blocks is None:
+                block_outputs = [block_outputs]
+            outs = []
+            for x in block_outputs:
+                x = x[feature_key]
+                if feature_key == 'attn':
+                    return x  # (B, num_heads, Patches+1, Patches+1)
+                if feature_key in ['q', 'k', 'v']:
+                    # (B, Patches+1, num_heads, feat_dim // num_heads)
+                    x = x.permute((0, 2, 1, 3)).contiguous()
+                    x = x.reshape((x.shape[0], -1, self.feat_dim))  # (B, Patches+1, feat_dim)
+                outs.append(x)
+            x = torch.cat(outs, dim=2)  # (B, Patches+1, feat_dim * self.num_blocks)
 
-        x = x[:, 1:, :]  # (B, Patches, feat_dim)
-        x = x.permute((0, 2, 1)).contiguous()  # (B, feat_dim, H*W)
-        x = x.reshape((x.shape[0], self.feat_dim * self.num_blocks, patches_h,
-                        patches_w))  # (B, feat_dim, H, W)
-        if self.upsample_factor is not None:
-            x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
-                                            align_corners=False)  # (B, feat_dim, H, W)
-        return x
+            x = x[:, 1:, :]  # (B, Patches, feat_dim)
+            x = x.permute((0, 2, 1)).contiguous()  # (B, feat_dim, H*W)
+            x = x.reshape((x.shape[0], self.feat_dim * self.num_blocks, patches_h,
+                            patches_w))  # (B, feat_dim, H, W)
+            if self.upsample_factor is not None:
+                x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
+                                                align_corners=False)  # (B, feat_dim, H, W)
+            return x
+        elif self.backbone == 'sam':
+            x = self.encoder.patch_embed(img)  # [B, H/16, W/16, feat_dim]
+
+            for blk in self.encoder.blocks:
+                x = blk(x)
+            x = x.permute(0, 3, 1, 2)  # [B, feat_dim, H/16, W/16]
+
+            if self.upsample_factor is not None:
+                x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
+                                                align_corners=False)  # (B, feat_dim, H, W)
+            return x

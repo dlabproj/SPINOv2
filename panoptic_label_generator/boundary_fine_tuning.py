@@ -28,7 +28,7 @@ class BoundaryFineTuner(FineTuner):
     vit_model : str
         ViT model name of DINOv2. One of ['vits14', 'vitl14', 'vitg14', 'vitb14'].
     backbone: str
-        Name of the pretrained backbone. One of ['dino', 'eva02', 'segany']
+        Name of the pretrained backbone. One of ['dino', 'eva02', 'sam']
     mode : str
         One of ['affinity', 'direct']. If 'affinity', predict affinity. If 'direct', predict
         boundary directly.
