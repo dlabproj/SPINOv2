@@ -62,7 +62,7 @@ class DinoVisionTransformer(nn.Module):
             proj_bias=True,
             drop_path_rate=0.0,
             drop_path_uniform=False,
-            init_values=None,  # for layerscale: None or 0 => no layerscale
+            init_values=None,
             embed_layer=PatchEmbed,
             act_layer=nn.GELU,
             block_fn=Block,
@@ -105,7 +105,8 @@ class DinoVisionTransformer(nn.Module):
         self.patch_size = patch_size
         self.drop_path_rate = drop_path_rate
         self.norm_layer = norm_layer
-
+        print(f"The input sizes for image is here")
+        print(img_size, patch_size)
         self.patch_embed = embed_layer(img_size=img_size, patch_size=patch_size, in_chans=in_chans,
                                        embed_dim=embed_dim)
         num_patches = self.patch_embed.num_patches

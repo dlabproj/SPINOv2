@@ -21,16 +21,16 @@ trainer:
 model:
   dinov2_vit_model: "vitb14"
   num_classes: 19 #${data.init_args.num_classes}
-  train_output_size: [504, 1008] #${data_params.image_size_input}
+  train_output_size: [448, 896] #[672, 1344] #[448, 896] #${data_params.image_size_input}
   upsample_factor: 14.0
-  head: "mlp"
+  head: "linear"
   ignore_index: 255
   top_k_percent_pixels: 0.2
   test_output_size: [1024, 2048] #${data_params.image_size_original}
   test_multi_scales: [1, 2, 3]
   test_plot: False
 
-  use_adapter: True # new Vit adapter parameter
+  use_adapter: False # new Vit adapter parameter
 
 data:
   class_path: datasets.cityscapes.CityscapesDataModule
@@ -49,7 +49,7 @@ data:
       - class_path: utils.transforms.RandomHorizontalFlip
       - class_path: utils.transforms.RandomResizedCrop
         init_args:
-          size: [504, 1008] #${data_params.image_size_input}
+          size: [448, 896] #[672, 1344] #[448, 896] #${data_params.image_size_input}
           scale: [0.2, 1.0]
       - class_path: utils.transforms.ColorJitter
         init_args:
@@ -66,7 +66,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [504, 1008] #${data_params.image_size_input}
+          size: [448, 896] #[672, 1344] #[448, 896] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
@@ -88,9 +88,15 @@ optimizer:
   class_path: torch.optim.Adam
   init_args:
     lr: 0.001
+      #weight_decay: 0.01
 
 lr_scheduler:
   class_path: torch.optim.lr_scheduler.CosineAnnealingLR
   init_args:
     T_max: ${trainer.max_epochs}
-
+      
+# This lr_scheduler is for vit-adapter.
+#lr_scheduler:
+#  class_path: torch.optim.lr_scheduler.StepLR
+#  init_args:
+#    step_size: 500

@@ -3,3 +3,5 @@
 
 # Optionally ignore full checkpoints folder
 panoptic_label_generator/checkpoints/
+panoptic_label_generator/checkpoints/*.ckpt
+panoptic_label_generator/results/*

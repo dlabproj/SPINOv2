@@ -103,6 +103,9 @@ class MSDeformAttn(nn.Module):
 
         N, Len_q, _ = query.shape
         N, Len_in, _ = input_flatten.shape
+        print("[DEBUG] input_spatial_shapes:", input_spatial_shapes)
+        print("[DEBUG] reference_points.shape:", reference_points.shape)
+        #print("[DEBUG] feat.shape:", feat.shape)
         assert (input_spatial_shapes[:, 0] *
                 input_spatial_shapes[:, 1]).sum() == Len_in
 

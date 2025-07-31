@@ -9,9 +9,13 @@
 #   https://github.com/rwightman/pytorch-image-models/tree/master/timm/models/vision_transformer.py
 
 import logging
-from typing import Tuple, Union
+#from typing import Tuple, Union
+#from torch import Tensor, nn
 
-from torch import Tensor, nn
+import torch
+import torch.nn as nn
+from torch import Tensor
+from typing import Union, Tuple
 
 logger = logging.getLogger("dinov2")
 
@@ -46,6 +50,7 @@ class Attention(nn.Module):
         self.proj_drop = nn.Dropout(proj_drop)
 
     def forward(self, x: Tensor, return_features=False) -> Union[Tuple[Tensor, Tensor, Tensor, Tensor, Tensor], Tensor]:
+
         B, N, C = x.shape
 
         # (3, B, num_heads, Patches+1, feat_dim // num_heads)
@@ -60,11 +65,11 @@ class Attention(nn.Module):
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
         x = self.proj(x)
         x = self.proj_drop(x)
+
         if return_features:
             return x, attn, q, k, v
         else:
             return x
-
 
 class MemEffAttention(Attention):
     def forward(self, x: Tensor, attn_bias=None, return_features=False) -> Tensor:

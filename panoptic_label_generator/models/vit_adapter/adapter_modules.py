@@ -24,9 +24,9 @@ def get_reference_points(spatial_shapes, device):
     reference_points = reference_points[:, :, None]
     return reference_points
 
-
 def deform_inputs(x):
     bs, c, h, w = x.shape
+    #print("[DEBUG] deform_inputs: h,w:", h, w)
     spatial_shapes = torch.as_tensor([(h // 8, w // 8),
                                       (h // 16, w // 16),
                                       (h // 32, w // 32)],
@@ -45,7 +45,41 @@ def deform_inputs(x):
     deform_inputs2 = [reference_points, spatial_shapes, level_start_index]
 
     return deform_inputs1, deform_inputs2
+'''
+def deform_inputs(x, patch_sizes=(8, 16, 32)):
+    bs, c, h, w = x.shape
+    spatial_shapes = []
+    for p in patch_sizes:
+        spatial_shapes.append((h // p, w // p))
+    spatial_shapes = torch.as_tensor(spatial_shapes, dtype=torch.long, device=x.device)
+    level_start_index = torch.cat((spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
+    reference_points = get_reference_points(spatial_shapes, x.device)
+    deform_inputs1 = [reference_points, spatial_shapes, level_start_index]
+    deform_inputs2 = deform_inputs1  # For most cases, use the same for both
+    print("[DEBUG][FPN] spatial_shapes:", spatial_shapes)
+    print("[DEBUG][FPN] reference_points.shape:", reference_points.shape)
+    return deform_inputs1, deform_inputs2
 
+def deform_inputs(x, patch_size=14):
+    bs, c, h, w = x.shape
+    # Compute grid size for patch embeddings (ViT grid)
+    grid_h = h // patch_size
+    grid_w = w // patch_size
+
+    spatial_shapes = torch.as_tensor([(grid_h, grid_w)], dtype=torch.long, device=x.device)
+    level_start_index = torch.cat((spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
+    reference_points = get_reference_points([(grid_h, grid_w)], x.device)
+    deform_inputs1 = [reference_points, spatial_shapes, level_start_index]
+
+    # For cases where multi-level features are needed, you could add more, but for ViT patch grid, this is sufficient
+    deform_inputs2 = [reference_points, spatial_shapes, level_start_index]
+
+   # print("[DEBUG][FIXED] deform_inputs: h,w:", h, w, "patch_size:", patch_size)
+   # print("[DEBUG][FIXED] spatial_shapes:", spatial_shapes)
+   # print("[DEBUG][FIXED] reference_points.shape:", reference_points.shape)
+
+    return deform_inputs1, deform_inputs2
+'''
 
 class ConvFFN(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None,
@@ -109,7 +143,13 @@ class Extractor(nn.Module):
     def forward(self, query, reference_points, feat, spatial_shapes, level_start_index, H, W):
 
         def _inner_forward(query, feat):
-
+            print("[DEBUG] query.shape:", query.shape)
+            print("[DEBUG] reference_points.shape:", reference_points.shape)
+            print("[DEBUG] feat.shape:", feat.shape)
+            print("[DEBUG] spatial_shapes:", spatial_shapes)
+            print("[DEBUG] level_start_index:", level_start_index)
+            #if feat.shape[1] != query.shape[1]:
+            #    feat = feat[:, :query.shape[1], :]
             attn = self.attn(self.query_norm(query), reference_points,
                              self.feat_norm(feat), spatial_shapes,
                              level_start_index, None)
@@ -128,7 +168,7 @@ class Extractor(nn.Module):
 
 
 class Injector(nn.Module):
-    def __init__(self, dim, num_heads=6, n_points=4, n_levels=1, deform_ratio=1.0,
+    def __init__(self, dim, num_heads=6, n_points=4, n_levels=3, deform_ratio=1.0,
                  norm_layer=partial(nn.LayerNorm, eps=1e-6), init_values=0., with_cp=False):
         super().__init__()
         self.with_cp = with_cp
@@ -141,7 +181,13 @@ class Injector(nn.Module):
     def forward(self, query, reference_points, feat, spatial_shapes, level_start_index):
 
         def _inner_forward(query, feat):
-
+            print("[DEBUG] query.shape:", query.shape)
+            print("[DEBUG] reference_points.shape:", reference_points.shape)
+            print("[DEBUG] feat.shape:", feat.shape)
+            print("[DEBUG] spatial_shapes:", spatial_shapes)
+            print("[DEBUG] level_start_index:", level_start_index)
+            #if feat.shape[1] != query.shape[1]:
+            #    feat = feat[:, :query.shape[1], :]
             attn = self.attn(self.query_norm(query), reference_points,
                              self.feat_norm(feat), spatial_shapes,
                              level_start_index, None)
@@ -160,7 +206,7 @@ class InteractionBlock(nn.Module):
                  drop=0., drop_path=0., with_cffn=True, cffn_ratio=0.25, init_values=0.,
                  deform_ratio=1.0, extra_extractor=False, with_cp=False):
         super().__init__()
-
+        self.with_cp = with_cp
         self.injector = Injector(dim=dim, n_levels=3, num_heads=num_heads, init_values=init_values,
                                  n_points=n_points, norm_layer=norm_layer,
                                  deform_ratio=deform_ratio, with_cp=with_cp)
@@ -182,8 +228,17 @@ class InteractionBlock(nn.Module):
         x = self.injector(query=x, reference_points=deform_inputs1[0],
                           feat=c, spatial_shapes=deform_inputs1[1],
                           level_start_index=deform_inputs1[2])
-        for idx, blk in enumerate(blocks):
+
+        def _inner_forward(x, blk):
             x = blk(x)
+            return x
+
+        for idx, blk in enumerate(blocks):
+            if self.with_cp:
+                x = cp.checkpoint(_inner_forward, x, blk)
+            else:
+                x = _inner_forward(x, blk)
+
         c = self.extractor(query=c, reference_points=deform_inputs2[0],
                            feat=x, spatial_shapes=deform_inputs2[1],
                            level_start_index=deform_inputs2[2], H=H, W=W)
@@ -200,7 +255,7 @@ class InteractionBlockWithCls(nn.Module):
                  drop=0., drop_path=0., with_cffn=True, cffn_ratio=0.25, init_values=0.,
                  deform_ratio=1.0, extra_extractor=False, with_cp=False):
         super().__init__()
-
+        self.with_cp = with_cp
         self.injector = Injector(dim=dim, n_levels=3, num_heads=num_heads,
                                  init_values=init_values, n_points=n_points,
                                  norm_layer=norm_layer, deform_ratio=deform_ratio,
@@ -224,8 +279,17 @@ class InteractionBlockWithCls(nn.Module):
                           feat=c, spatial_shapes=deform_inputs1[1],
                           level_start_index=deform_inputs1[2])
         x = torch.cat((cls, x), dim=1)
-        for idx, blk in enumerate(blocks):
+
+        def _inner_forward(x, blk):
             x = blk(x)
+            return x
+
+        for idx, blk in enumerate(blocks):
+            if self.with_cp:
+                x = cp.checkpoint(_inner_forward, x, blk)
+            else:
+                x = _inner_forward(x, blk)
+
         cls, x = x[:, :1, ], x[:, 1:, ]
         c = self.extractor(query=c, reference_points=deform_inputs2[0],
                            feat=x, spatial_shapes=deform_inputs2[1],

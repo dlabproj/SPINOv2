@@ -1,5 +1,8 @@
 README.md
 setup.py
+/work/dlclarge2/guptaay-DL2025_RL1/SPINO/panoptic_label_generator/external/ms_deformable_attention/src/vision.cpp
+/work/dlclarge2/guptaay-DL2025_RL1/SPINO/panoptic_label_generator/external/ms_deformable_attention/src/cpu/ms_deform_attn_cpu.cpp
+/work/dlclarge2/guptaay-DL2025_RL1/SPINO/panoptic_label_generator/external/ms_deformable_attention/src/cuda/ms_deform_attn_cuda.cu
 /work/dlclarge2/guptaay-DL2025_RL1/SPINO/panoptic_segmentation_model/external/ms_deformable_attention/src/vision.cpp
 /work/dlclarge2/guptaay-DL2025_RL1/SPINO/panoptic_segmentation_model/external/ms_deformable_attention/src/cpu/ms_deform_attn_cpu.cpp
 /work/dlclarge2/guptaay-DL2025_RL1/SPINO/panoptic_segmentation_model/external/ms_deformable_attention/src/cuda/ms_deform_attn_cuda.cu

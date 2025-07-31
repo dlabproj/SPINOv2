@@ -16,6 +16,8 @@ from torch import nn
 from torch.utils.data import Dataset
 from torchvision.transforms import InterpolationMode
 
+from models.dino_vit_adapter import ViTAdapter
+
 # Ignore some torch warnings
 warnings.filterwarnings('ignore', '.*The default behavior for interpolate/upsample with float*')
 warnings.filterwarnings(
@@ -56,15 +58,17 @@ class SemanticFineTuner(FineTuner):
 
     def __init__(self, dinov2_vit_model: str, num_classes: int, train_output_size: Tuple[int, int],
                  blocks: Optional[List[int]] = None, upsample_factor: Optional[float] = None,
-                 head: str = 'mlp',
+                 head: str = 'linear',
                  ignore_index: int = -100, top_k_percent_pixels: float = 1.0,
                  test_output_size: Optional[Tuple[int, int]] = None,
                  test_multi_scales: Optional[List[int]] = None,
                  test_plot: bool = False, test_save_dir: Optional[str] = None,
-                 use_adapter: bool = False, adapter_config: Optional[dict] = None
+                 use_adapter: bool = False, #adapter_config: Optional[dict] = None
                  ):
         super().__init__(dinov2_vit_model=dinov2_vit_model, blocks=blocks,
-                         upsample_factor=upsample_factor, use_adapter=use_adapter)
+                         upsample_factor=upsample_factor, use_adapter=use_adapter,
+                         #adapter_config=adapter_config
+                         )
         self.num_classes = num_classes
         self.train_output_size = train_output_size
         self.ignore_index = ignore_index
@@ -77,7 +81,7 @@ class SemanticFineTuner(FineTuner):
         # Determine input dimension for the head
         if self.use_adapter:
             # For adapter, we use the feature dimension from the adapter
-            head_input_dim = self.feat_dim
+            head_input_dim = self.feat_dim * self.num_blocks * 4
         else:
             # For regular DINOv2, use feat_dim * num_blocks
             head_input_dim = self.feat_dim * self.num_blocks
@@ -113,6 +117,7 @@ class SemanticFineTuner(FineTuner):
             raise ValueError(f'Unknown head {head}')
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print("[DEBUG] Input to SemanticFineTuner.forward, x.shape:", x.shape)
         x = self.forward_encoder(x)  # (B, feat_dim, H, W)
         if isinstance(self.head, KNeighborsClassifier):
             if self.training:
@@ -131,6 +136,11 @@ class SemanticFineTuner(FineTuner):
         return x
 
     def training_step(self, train_batch: Dict[str, Any], batch_idx: int) -> Dict[str, Any]:
+        
+        # Explicitly free up any cached memory right before the forward pass
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         rgb = train_batch['rgb']
         sem = train_batch['semantic'].long()
 
@@ -294,7 +304,7 @@ class SemanticFineTunerCLI(LightningCLI):
 
     def add_arguments_to_parser(self, parser):
         # Dataset
-        parser.add_argument('--data_params', type=Dict)
+        parser.add_argument('--data_params', type=Dict[str, Any])
 
 
 if __name__ == '__main__':

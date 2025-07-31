@@ -3,7 +3,7 @@ seed_everything: 0
 
 trainer:
   accelerator: gpu
-  strategy: ddp_find_unused_parameters_false
+  strategy: ddp_find_unused_parameters_true
   logger: False
 
 model:
@@ -12,30 +12,36 @@ model:
     init_args:
       dinov2_vit_model: "vitb14"
       num_classes: ${data.init_args.num_classes}
-      train_output_size: [504, 1008] #${data_params.image_size_input}
+      train_output_size: [448, 896] #[672, 1344] #[448, 896] #${data_params.image_size_input}
       upsample_factor: 14.0
-      head: "mlp"
+      head: "linear"
       ignore_index: 255
       top_k_percent_pixels: 0.2
       test_output_size: [1024, 2048] #${data_params.image_size_original}
-      test_multi_scales: [ 1, 2, 3 ]
+      test_multi_scales: [ 1, 2 ]
       test_plot: False
       test_save_dir: null
-  semantic_model_ckpt: "checkpoints/semantic_cityscapes-v2.ckpt"
+
+      use_adapter: False
+
+  semantic_model_ckpt: "checkpoints/semantic_cityscapes-v17.ckpt"
   boundary_model:
     class_path: boundary_fine_tuning.BoundaryFineTuner
     init_args:
       dinov2_vit_model: "vitb14"
       mode: "direct"
       upsample_factor: 4.0
-      head: "mlp"
+      head: "linear"
       neighbor_radius: 1.5
       threshold_boundary: 0.93
       num_boundary_neighbors: 1
       test_output_size: [1024, 2048] #${data_params.image_size_original}
       test_multi_scales: [3, 4, 5]
       test_plot: False
-  boundary_model_ckpt: "checkpoints/boundary_cityscapes-v2.ckpt"
+      
+      use_adapter: False
+
+  boundary_model_ckpt: "checkpoints/boundary_cityscapes-v17.ckpt"
   structure_connectivity: [[0, 1, 0], [1, 1, 1], [0, 1, 0]]
   instance_min_pixel: 500
   erosion_structure: [[1, 1, 1], [1, 1, 1], [1, 1, 1]]
@@ -62,7 +68,7 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [504, 1008] #${data_params.image_size_input}
+          size: [448, 896] #[672, 1344] #[448, 896] #[448, 896] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:

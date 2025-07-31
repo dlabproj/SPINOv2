@@ -16,7 +16,7 @@ from timm.models.layers import trunc_normal_
 from torch.nn.init import normal_
 
 from external.ms_deformable_attention.modules import MSDeformAttn
-from models.vit.vision_transformer import DinoVisionTransformer
+from models.vit.dino_vision_transformer import DinoVisionTransformer
 from models.vit_adapter.adapter_modules import (
     InteractionBlock,
     InteractionBlockWithCls,
@@ -28,26 +28,32 @@ _logger = logging.getLogger(__name__)
 
 __all__ = ['ViTAdapter']
 
+'''
 def _make_dinov2_model_name(arch_name: str, patch_size: int) -> str:
     compact_arch_name = arch_name.replace("_", "")[:4]
     return f"dinov2_{compact_arch_name}{patch_size}"
+'''
 
 _DINOV2_BASE_URL = "https://dl.fbaipublicfiles.com/dinov2"
 
 
 class ViTAdapter(DinoVisionTransformer):
-    def __init__(self, pretrain_size=224, conv_inplane=64, n_points=4,
-                 deform_num_heads=6, init_values=0., interaction_indexes=None, with_cffn=True,
-                 cffn_ratio=0.25, deform_ratio=1.0, add_vit_feature=True,
-                 use_extra_extractor=True, with_cp=False,
-                 vit_arch_name="vit_base", vit_kwargs=dict(), vit_pretrained=True):
-        super().__init__(**vit_kwargs)
+    def __init__(self, pretrain_size=518, conv_inplane=64, n_points=4, embed_dim=768,
+                 deform_num_heads=6, init_values=0., blocks=0,
+                 interaction_indexes=[[0, 2], [3, 5], [6, 8], [9, 11]], with_cffn=True,
+                 cffn_ratio=0.25, deform_ratio=1.0, add_vit_feature=False,
+                 use_extra_extractor=True, with_cp=False, num_tokens=1,
+                 #vit_arch_name="vit_base", vit_kwargs=dict(), vit_pretrained=True
+                 ):
+        #super().__init__(**vit_kwargs)
+        super().__init__()
 
-        model_name = _make_dinov2_model_name(vit_arch_name, vit_kwargs["patch_size"])
-        if vit_pretrained:
-            url = _DINOV2_BASE_URL + f"/{model_name}/{model_name}_pretrain.pth"
-            state_dict = torch.hub.load_state_dict_from_url(url, map_location="cpu")
-            self.load_state_dict(state_dict, strict=True)
+        #model_name = _make_dinov2_model_name(vit_arch_name, vit_kwargs["patch_size"])
+        #if vit_pretrained:
+            #url = _DINOV2_BASE_URL + f"/{model_name}/{model_name}_pretrain.pth"
+        url = "https://dl.fbaipublicfiles.com/dinov2/dinov2_vitb14/dinov2_vitb14_pretrain.pth"
+        state_dict = torch.hub.load_state_dict_from_url(url, map_location="cpu")
+        self.load_state_dict(state_dict, strict=True)
 
         # Freeze vit
         for param in self.parameters():
@@ -55,11 +61,12 @@ class ViTAdapter(DinoVisionTransformer):
 
         # self.num_classes = 80
         self.mask_token = None
-        self.num_block = len(self.blocks)
+        self.num_blocks = len(self.blocks)
         self.pretrain_size = (pretrain_size, pretrain_size)
         self.interaction_indexes = interaction_indexes
         self.add_vit_feature = add_vit_feature
-        embed_dim = self.embed_dim
+        self.embed_dim = embed_dim
+        self.num_tokens = num_tokens
 
         self.level_embed = nn.Parameter(torch.zeros(3, embed_dim))
         self.spm = SpatialPriorModule(inplanes=conv_inplane, embed_dim=embed_dim, with_cp=False)
@@ -121,11 +128,13 @@ class ViTAdapter(DinoVisionTransformer):
         return c2, c3, c4
 
     def forward(self, x):
+        print("[DEBUG] Input to ViTAdapter.forward, x.shape:", x.shape, "patch_size:", self.patch_size)
         deform_inputs1, deform_inputs2 = deform_inputs(x)
 
         # SPM forward
         c1, c2, c3, c4 = self.spm(x)
         c2, c3, c4 = self._add_level_embed(c2, c3, c4)
+
         c = torch.cat([c2, c3, c4], dim=1)
 
         # Patch Embedding forward

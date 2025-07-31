@@ -13,6 +13,8 @@ from sklearn.neighbors import KNeighborsClassifier, radius_neighbors_graph
 from torch import nn
 from torchvision.transforms import InterpolationMode
 
+from models.dino_vit_adapter import ViTAdapter
+
 # Ignore some torch warnings
 warnings.filterwarnings('ignore', '.*The default behavior for interpolate/upsample with float*')
 warnings.filterwarnings(
@@ -50,14 +52,20 @@ class BoundaryFineTuner(FineTuner):
     """
 
     def __init__(self, dinov2_vit_model: str, mode: str = 'direct',
-                 upsample_factor: Optional[float] = None, head: str = 'mlp',
+                 upsample_factor: Optional[float] = None, head: str = 'linear',
                  neighbor_radius: float = 1.5, threshold_boundary: float = 0.95,
                  num_boundary_neighbors: int = 1,
                  test_output_size: Optional[Tuple[int, int]] = None,
                  test_multi_scales: Optional[List[int]] = None,
-                 test_plot: bool = False):
+                 test_plot: bool = False, use_adapter: bool = False, 
+                 #adapter_config: Optional[dict] = None
+                 ):
+
         super().__init__(dinov2_vit_model=dinov2_vit_model, blocks=None,
-                         upsample_factor=upsample_factor)
+                         upsample_factor=upsample_factor, use_adapter=use_adapter,
+                         #adapter_config=adapter_config
+                         )
+
         assert mode in ['affinity', 'direct']
         self.mode = mode
         self.neighbor_radius = neighbor_radius
@@ -81,15 +89,20 @@ class BoundaryFineTuner(FineTuner):
             else:
                 raise NotImplementedError
         elif self.mode == 'direct':
+            if self.use_adapter:
+                feat_dim = 4 * self.feat_dim
+            else:
+                feat_dim = self.feat_dim
+
             if head == 'linear':
-                self.head = nn.Conv2d(self.feat_dim, 1, kernel_size=1, stride=1, padding=0)
+                self.head = nn.Conv2d(feat_dim, 1, kernel_size=1, stride=1, padding=0)
             elif head == 'knn':
                 self.head = KNeighborsClassifier(n_neighbors=5, leaf_size=10)
                 self.knn_X = []
                 self.knn_y = []
             elif head == 'cnn':
                 self.head = nn.Sequential(
-                    nn.Conv2d(self.feat_dim, 600, kernel_size=3, stride=1, padding=1),
+                    nn.Conv2d(feat_dim, 600, kernel_size=3, stride=1, padding=1),
                     nn.ReLU(),
                     nn.Conv2d(600, 600, kernel_size=3, stride=1, padding=1),
                     nn.ReLU(),
@@ -99,7 +112,7 @@ class BoundaryFineTuner(FineTuner):
                 )
             elif head == 'mlp':
                 self.head = nn.Sequential(
-                    nn.Conv2d(self.feat_dim, 600, kernel_size=1, stride=1, padding=0),
+                    nn.Conv2d(feat_dim, 600, kernel_size=1, stride=1, padding=0),
                     nn.ReLU(),
                     nn.Conv2d(600, 600, kernel_size=1, stride=1, padding=0),
                     nn.ReLU(),
@@ -406,7 +419,7 @@ class BoundaryFineTunerCLI(LightningCLI):
 
     def add_arguments_to_parser(self, parser):
         # Dataset
-        parser.add_argument('--data_params', type=Dict)
+        parser.add_argument('--data_params', type=Dict[str, Any])
 
 
 if __name__ == '__main__':
