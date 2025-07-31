@@ -142,6 +142,8 @@ class SemanticFineTuner(FineTuner):
         else:
             sem = TF.resize(sem, self.train_output_size, interpolation=InterpolationMode.NEAREST)
             pred = self(rgb)
+            # print(f"max: {pred.max()}, min: {pred.min()}")
+            # print(f"predicted classes: {torch.unique(torch.argmax(pred, dim=1)).cpu().numpy()}")
             loss = F.cross_entropy(pred, sem, ignore_index=self.ignore_index, reduction='none')
 
             if self.top_k_percent_pixels < 1.0:
@@ -152,6 +154,7 @@ class SemanticFineTuner(FineTuner):
             loss = loss.mean()
 
         self.log('train_loss', loss)
+        # print(f"Train loss: {loss.item()}")
         return loss
 
 #    def on_after_backward(self):

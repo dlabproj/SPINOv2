@@ -10,24 +10,24 @@ model:
   semantic_model:
     class_path: semantic_fine_tuning.SemanticFineTuner
     init_args:
-      vit_model: "vitb16"
-      backbone: "sam"
+      vit_model: "vitb14"
+      backbone: "eva"
       num_classes: 19 #${data.init_args.num_classes}
-      train_output_size: [672, 1344] #${data_params.image_size_input}
-      upsample_factor: 16.0
+      train_output_size: [448, 896] #${data_params.image_size_input}
+      upsample_factor: 14.0
       head: "mlp"
       ignore_index: 255
       top_k_percent_pixels: 0.2
       test_output_size: [1024, 2048] #${data_params.image_size_original}
-      test_multi_scales: [ 1, 2, 3 ]
+      test_multi_scales: [ 1, 2 ]
       test_plot: False
       test_save_dir: null
   semantic_model_ckpt: "checkpoints/semantic_cityscapes.ckpt"
   boundary_model:
     class_path: boundary_fine_tuning.BoundaryFineTuner
     init_args:
-      vit_model: "vitb16"
-      backbone: "sam"
+      vit_model: "vitb14"
+      backbone: "eva"
       mode: "direct"
       upsample_factor: 4.0
       head: "mlp"
@@ -64,12 +64,12 @@ data:
       - class_path: utils.transforms.ToTensor
       - class_path: utils.transforms.Resize
         init_args:
-          size: [672, 1344] #${data_params.image_size_input}
+          size: [448, 896] #${data_params.image_size_input}
       - class_path: utils.transforms.MaskPostProcess
       - class_path: utils.transforms.ImageNormalize
         init_args:
-          mean: [0.485, 0.456, 0.406] #${data_params.image_mean}
-          std: [0.229, 0.224, 0.225] #${data_params.image_std}
+          mean: [0.5, 0.5, 0.5] #${data_params.image_mean}
+          std: [0.5, 0.5, 0.5] #${data_params.image_std}
     label_mode: "cityscapes_19"
     train_sample_indices: []
     test_sample_indices: null
