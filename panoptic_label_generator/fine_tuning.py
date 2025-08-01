@@ -14,7 +14,7 @@ from models.eva02 import eva02_vitb14, eva02_vitl14
 from torch import nn
 
 
-def interpolate_pos_embed(model, new_hw):
+def interpolate_eva_pos_embed(model, new_hw):
     # Extract original pos_embed
     pos_embed = model.pos_embed  # shape [1, N+1, D]
     cls_token = pos_embed[:, :1]  # [1, 1, D]
@@ -31,6 +31,28 @@ def interpolate_pos_embed(model, new_hw):
     
     new_pos_embed = torch.cat((cls_token, patch_pos_embed), dim=1)  # [1, new_N+1, D]
     model.pos_embed = torch.nn.Parameter(new_pos_embed)
+
+
+def interpolate_sam_pos_embed(image_encoder, new_hw):
+    """
+    Interpolates SAM ViT absolute positional embeddings for new input resolution.
+
+    Args:
+        image_encoder: The SAM image encoder module (ImageEncoderViT)
+        new_hw: Tuple (H, W) in patch units, not pixels
+    """
+    if image_encoder.pos_embed is None:
+        return
+
+    pos_embed = image_encoder.pos_embed  # shape [1, H_old, W_old, D]
+    old_h, old_w = pos_embed.shape[1:3]
+    D = pos_embed.shape[3]
+
+    pos_embed = pos_embed.permute(0, 3, 1, 2)  # [1, D, H_old, W_old]
+    pos_embed = F.interpolate(pos_embed, size=new_hw, mode='bicubic', align_corners=False)
+    pos_embed = pos_embed.permute(0, 2, 3, 1)  # [1, H_new, W_new, D]
+
+    image_encoder.pos_embed = nn.Parameter(pos_embed)
 
 
 class FineTuner(pl.LightningModule):
@@ -55,9 +77,6 @@ class FineTuner(pl.LightningModule):
                 raise ValueError(f'Unknown vit model {vit_model}')
             self.feat_dim = self.encoder.num_features
             self.patch_size = self.encoder.patch_size
-
-            for param in self.encoder.parameters():  # freeze backbone
-                param.requires_grad = False
         elif self.backbone == "sam":
             if vit_model == 'vitb16':
                 self.encoder = sam_vit_b(pretrained=True)
@@ -70,8 +89,7 @@ class FineTuner(pl.LightningModule):
             self.feat_dim = self.encoder.patch_embed.proj.out_channels  # 768
             self.patch_size = self.encoder.patch_embed.proj.kernel_size[0]  # 16
 
-            for param in self.encoder.parameters():  # freeze backbone
-                param.requires_grad = False
+            interpolate_sam_pos_embed(self.encoder, (448 // self.patch_size, 896 // self.patch_size))
         elif self.backbone == 'eva':
             if vit_model == 'vitb14':
                 self.encoder = eva02_vitb14(pretrained=True)
@@ -82,14 +100,14 @@ class FineTuner(pl.LightningModule):
             self.feat_dim = self.encoder.embed_dim  # 768
             self.patch_size = self.encoder.patch_embed.proj.kernel_size[0]  # 14
             self.encoder.patch_embed.img_size = (448, 896)
-            interpolate_pos_embed(self.encoder, (448 // self.patch_size, 896 // self.patch_size))
-
-            for param in self.encoder.parameters():  # freeze backbone
-                param.requires_grad = False
+            interpolate_eva_pos_embed(self.encoder, (448 // self.patch_size, 896 // self.patch_size))
         else:
             raise ValueError(f'Unknown backbone {backbone}')
 
         self.encoder.mask_token = None  # can't use ddp_find_unused_parameters_false otherwise
+
+        for param in self.encoder.parameters():  # freeze backbone
+                param.requires_grad = False
 
         if blocks is None:
             self.num_blocks = 1
@@ -102,7 +120,7 @@ class FineTuner(pl.LightningModule):
         requires_grad = any(param.requires_grad for param in self.encoder.parameters())
 
         if self.backbone == 'dino':
-            with torch.set_grad_enabled(any(param.requires_grad for param in self.encoder.parameters())):
+            with torch.set_grad_enabled(requires_grad):
                 return_attention_features = any([(feature_key in x) for x in ['q', 'k', 'v', 'attn']])
                 
                 block_outputs = self.encoder.forward_features(
@@ -133,19 +151,36 @@ class FineTuner(pl.LightningModule):
                                                     align_corners=False)  # (B, feat_dim, H, W)
                 return x
         elif self.backbone == 'sam':
-            with torch.set_grad_enabled(any(param.requires_grad for param in self.encoder.parameters())):
-                x = self.encoder.patch_embed(img)  # [B, H/16, W/16, feat_dim]
+            with torch.set_grad_enabled(requires_grad):
+                x = self.encoder.patch_embed(img)  # (B, H', W', C)
 
+                if self.encoder.pos_embed is not None:
+                    x = x + self.encoder.pos_embed
+
+                block_outputs = []
                 for blk in self.encoder.blocks:
                     x = blk(x)
-                x = x.permute(0, 3, 1, 2)  # [B, feat_dim, H/16, W/16]
+                    block_outputs.append(x)
+
+                if self.blocks is not None:
+                    selected_blocks = [block_outputs[i] for i in self.blocks]
+                else:
+                    selected_blocks = [block_outputs[-1]]  # Last layer
+
+                outs = []
+                for x in selected_blocks:
+                    # (B, H', W', C) => reshape to (B, C, H', W')
+                    x = x.permute(0, 3, 1, 2).contiguous()
+                    outs.append(x)
+
+                # Concatenate along channel dim if multiple blocks
+                x = torch.cat(outs, dim=1)  # (B, C * num_blocks, H, W)
 
                 if self.upsample_factor is not None:
-                    x = nn.functional.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear',
-                                                    align_corners=False)  # (B, feat_dim, H, W)
+                    x = F.interpolate(x, scale_factor=self.upsample_factor, mode='bilinear', align_corners=False)
                 return x
         elif self.backbone == 'eva':
-            with torch.set_grad_enabled(any(param.requires_grad for param in self.encoder.parameters())):
+            with torch.set_grad_enabled(requires_grad):
                 B, C = img.shape[:2]
                 x = self.encoder.patch_embed(img)  # shape: [B, num_patches, C]
                 N = patches_h * patches_w

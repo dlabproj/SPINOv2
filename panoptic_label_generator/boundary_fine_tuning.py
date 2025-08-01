@@ -254,6 +254,7 @@ class BoundaryFineTuner(FineTuner):
             loss = F.binary_cross_entropy(pred, ins_boundary)
 
         self.log('train_loss', loss)
+        print(f"Train loss: {loss.item()}")
         return loss
 
     def predict(self, rgb: torch.Tensor) -> torch.Tensor:
