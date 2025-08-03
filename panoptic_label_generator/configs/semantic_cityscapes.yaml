@@ -23,14 +23,15 @@ model:
   num_classes: 19 #${data.init_args.num_classes}
   train_output_size: [448, 896] #[672, 1344] #[448, 896] #${data_params.image_size_input}
   upsample_factor: 14.0
-  head: "linear"
+  head: "mlp"
   ignore_index: 255
   top_k_percent_pixels: 0.2
   test_output_size: [1024, 2048] #${data_params.image_size_original}
   test_multi_scales: [1, 2, 3]
   test_plot: False
 
-  use_adapter: False # new Vit adapter parameter
+  use_adapter: True # new Vit adapter parameter
+  use_lora: True # new LoRA parameter
 
 data:
   class_path: datasets.cityscapes.CityscapesDataModule
